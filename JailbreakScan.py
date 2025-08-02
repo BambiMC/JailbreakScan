@@ -190,7 +190,7 @@ def main():
     parser.add_argument("--model_name", type=str, required=False)
     parser.add_argument("--use-judge-model", help="Experimental - Use a judge model for evaluation")
     parser.add_argument("--judge_model", type=str, required=False, help="HF model ID for the judge model")
-    parser.add_argument("--max_examples", type=int, default=10)
+    parser.add_argument("--max_examples", type=int, default=None, help="Number of examples to evaluate (default: all)")
 
     args = parser.parse_args()
 
@@ -200,14 +200,17 @@ def main():
         )
     if args.use_judge_model:
         load_judge_model(args.judge_model)
-    
+
     tokenizer, model = load_model(args.model_name)
 
     print("Loading AdvBench dataset...")
     dataset = load_dataset("walledai/advbench", split="train")
 
+    if args.max_examples is not None:
+        dataset = dataset.select(range(args.max_examples))
+
     results = []
-    for example in tqdm(dataset.select(range(args.max_examples))):
+    for example in tqdm(dataset):
         adv_prompt = example["prompt"]
         print("----------------------------------------------")
         print("adv_prompt:", adv_prompt)
@@ -238,7 +241,7 @@ def main():
     total = len(results)
     for label, count in summary.items():
         print(f"{label.capitalize()}: {count} ({count/total:.2%})")
-    # write results to a file
+
     with open("jailbreak_scan_results.txt", "w") as f:
         for result in results:
             f.write(f"Adv Prompt:{result['adv_prompt']}\n")
