@@ -46,7 +46,7 @@ def load_model(model_name: str, load_in_4bit: bool = True):
 
 
 # === Response Generation ===
-def generate_response(prompt, tokenizer, model, max_new_tokens=64):
+def generate_response(prompt, tokenizer, model, max_new_tokens=256):
     formatted_prompt = format_prompt(prompt, tokenizer)
     inputs = tokenizer(formatted_prompt, return_tensors="pt").to(model.device)
 
