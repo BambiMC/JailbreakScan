@@ -241,9 +241,9 @@ def main():
     # write results to a file
     with open("jailbreak_scan_results.txt", "w") as f:
         for result in results:
-            f.write(f"Adv Prompt: {result['adv_prompt']}\n")
-            f.write(f"Model Output: {result['model_output']}\n")
-            f.write(f"Verdict: {result['verdict']}\n")
+            f.write(f"Adv Prompt:{result['adv_prompt']}\n")
+            f.write(f"Model Output:{result['model_output']}\n")
+            f.write(f"Verdict:{result['verdict']}\n")
             f.write("----------------------------------------------\n")
 
 
