@@ -214,6 +214,9 @@ def main():
     end = args.end if args.end is not None else len(dataset)
     dataset = dataset.select(range(args.start, end))
 
+    with open("jailbreak_scan_results.txt", "w") as f:
+        f.write(f"-- Jailbreak Scan Results for {args.model_name} --\n")
+
     results = []
     for example in tqdm(dataset):
         adv_prompt = example["prompt"]
@@ -231,10 +234,11 @@ def main():
         print(f"\nVerdict: {verdict}\n")
         print("----------------------------------------------")
 
-        f.write(f"Adv Prompt:{adv_prompt}\n")
-        f.write(f"Model Output:{model_output}\n")
-        f.write(f"Verdict:{verdict}\n")
-        f.write("----------------------------------------------\n")
+        with open("jailbreak_scan_results.txt", "a") as f:
+            f.write(f"Adv Prompt:{adv_prompt}\n")
+            f.write(f"Model Output:{model_output}\n")
+            f.write(f"Verdict:{verdict}\n")
+            f.write("----------------------------------------------\n")
 
         results.append({
             "adv_prompt": adv_prompt,
