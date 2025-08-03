@@ -22,7 +22,7 @@ def format_prompt(prompt, tokenizer):
         return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     return prompt
 
-def load_model(model_name: str, load_in_4bit: bool = True):
+def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = False):
     print(f"Loading model: {model_name} with {'4-bit' if load_in_4bit else '8-bit'} quantization")
 
     bnb_config = BitsAndBytesConfig(
@@ -39,9 +39,10 @@ def load_model(model_name: str, load_in_4bit: bool = True):
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         quantization_config=bnb_config,
-        device_map="auto",
+        device_map="auto" if multi_gpu else None,
         torch_dtype=torch.bfloat16,
     )
+
     return tokenizer, model
 
 
@@ -191,6 +192,10 @@ def main():
     parser.add_argument("--use-judge-model", help="Experimental - Use a judge model for evaluation")
     parser.add_argument("--judge_model", type=str, required=False, help="HF model ID for the judge model")
     parser.add_argument("--max_examples", type=int, default=None, help="Number of examples to evaluate (default: all)")
+    parser.add_argument("--start", type=int, default=0, help="Start index for dataset slice")
+    parser.add_argument("--end", type=int, default=None, help="End index for dataset slice")
+    parser.add_argument("--multi_gpu", action="store_true", help="Enable multi-GPU loading if available")
+
 
     args = parser.parse_args()
 
@@ -201,13 +206,13 @@ def main():
     if args.use_judge_model:
         load_judge_model(args.judge_model)
 
-    tokenizer, model = load_model(args.model_name)
+    tokenizer, model = load_model(args.model_name, multi_gpu=args.multi_gpu)
 
     print("Loading AdvBench dataset...")
     dataset = load_dataset("walledai/advbench", split="train")
 
-    if args.max_examples is not None:
-        dataset = dataset.select(range(args.max_examples))
+    end = args.end if args.end is not None else len(dataset)
+    dataset = dataset.select(range(args.start, end))
 
     results = []
     for example in tqdm(dataset):
@@ -216,6 +221,7 @@ def main():
         print("adv_prompt:", adv_prompt)
         model_output = generate_response(adv_prompt, tokenizer, model)
         print(f"\Response: {model_output}\n")
+
         if args.use_judge_model:
             print("Evaluating with judge model...")
             verdict = evaluate_with_judge(model_output, adv_prompt)
@@ -225,13 +231,16 @@ def main():
         print(f"\nVerdict: {verdict}\n")
         print("----------------------------------------------")
 
-        results.append(
-            {
-                "adv_prompt": adv_prompt,
-                "model_output": model_output,
-                "verdict": verdict,
-            }
-        )
+        f.write(f"Adv Prompt:{adv_prompt}\n")
+        f.write(f"Model Output:{model_output}\n")
+        f.write(f"Verdict:{verdict}\n")
+        f.write("----------------------------------------------\n")
+
+        results.append({
+            "adv_prompt": adv_prompt,
+            "model_output": model_output,
+            "verdict": verdict,
+        })
 
     # Count verdicts dynamically
     from collections import Counter
@@ -241,13 +250,6 @@ def main():
     total = len(results)
     for label, count in summary.items():
         print(f"{label.capitalize()}: {count} ({count/total:.2%})")
-
-    with open("jailbreak_scan_results.txt", "w") as f:
-        for result in results:
-            f.write(f"Adv Prompt:{result['adv_prompt']}\n")
-            f.write(f"Model Output:{result['model_output']}\n")
-            f.write(f"Verdict:{result['verdict']}\n")
-            f.write("----------------------------------------------\n")
 
 
 if __name__ == "__main__":
