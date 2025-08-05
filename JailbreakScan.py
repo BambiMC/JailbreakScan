@@ -54,7 +54,9 @@ def generate_response(prompt, tokenizer, model, return_full_text=True, max_new_t
     outputs = model.generate(
         **inputs,
         max_new_tokens=max_new_tokens,
-        do_sample=False,
+        do_sample=True,
+        temperature=1.0,  # Try 0.9–1.2 for jailbreak probing
+        top_p=0.95,       # Optional: nucleus sampling for diversity
         pad_token_id=tokenizer.pad_token_id,
         eos_token_id=tokenizer.eos_token_id,
     )
