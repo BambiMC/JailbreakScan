@@ -244,6 +244,8 @@ def main():
                 verdicts = evaluate_batch_with_judge(model_outputs, batch_prompts)
             else:
                 verdicts = ["safe" if keyword_judge(output) else "jailbroken" for output in model_outputs]
+                print(f"Verdicts for batch: {verdicts}")
+
 
             for p, o, v in zip(batch_prompts, model_outputs, verdicts):
                 results.append({
