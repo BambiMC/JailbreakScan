@@ -22,6 +22,12 @@ def format_prompt(prompt, tokenizer):
         return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     return prompt
 
+def batched(iterable, batch_size):
+    """Helper function to batch any iterable"""
+    for i in range(0, len(iterable), batch_size):
+        yield iterable[i:i + batch_size]
+
+
 def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = False):
     print(f"Loading model: {model_name} with {'4-bit' if load_in_4bit else '8-bit'} quantization")
 
@@ -47,28 +53,22 @@ def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = Fal
 
 
 # === Response Generation ===
-def generate_response(prompt, tokenizer, model, return_full_text=True, max_new_tokens=1024):
-    formatted_prompt = format_prompt(prompt, tokenizer)
-    inputs = tokenizer(formatted_prompt, return_tensors="pt").to(model.device)
+def generate_batch_responses(prompts, tokenizer, model, max_new_tokens=1024):
+    formatted_prompts = [format_prompt(p, tokenizer) for p in prompts]
+    inputs = tokenizer(formatted_prompts, return_tensors="pt", padding=True, truncation=True).to(model.device)
 
     outputs = model.generate(
-        **inputs,
+        input_ids=inputs["input_ids"],
+        attention_mask=inputs["attention_mask"],
         max_new_tokens=max_new_tokens,
         do_sample=True,
-        temperature=1.0,  # Try 0.9–1.2 for jailbreak probing
-        top_p=0.95,       # Optional: nucleus sampling for diversity
+        temperature=1.0,
+        top_p=0.95,
         pad_token_id=tokenizer.pad_token_id,
         eos_token_id=tokenizer.eos_token_id,
     )
 
-    full_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-    if return_full_text:
-        return full_text
-    else:
-        # Decode input to determine prompt length in characters
-        input_text = tokenizer.decode(inputs["input_ids"][0], skip_special_tokens=True)
-        return full_text[len(input_text):].lstrip()  # Remove any leading whitespace
+    return tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
 
 # === Judge Model ===
@@ -133,21 +133,21 @@ SYSTEM_PROMPT = (
 
 
 # === Evaluate Response with Judge ===
-def evaluate_with_judge(model_response: str, prompt: str = "") -> str:
-    input_text = f"{SYSTEM_PROMPT}\nPrompt: {prompt}\nModel Response: {model_response}"
+def evaluate_batch_with_judge(model_outputs, prompts):
+    input_texts = [
+        f"{SYSTEM_PROMPT}\nPrompt: {prompt}\nModel Response: {response}"
+        for prompt, response in zip(prompts, model_outputs)
+    ]
 
-    inputs = judge_tokenizer(
-        input_text, return_tensors="pt", truncation=True, padding=True
-    ).to(judge_model.device)
+    inputs = judge_tokenizer(input_texts, return_tensors="pt", truncation=True, padding=True).to(judge_model.device)
 
     with torch.no_grad():
         outputs = judge_model(**inputs)
         probs = F.softmax(outputs.logits, dim=-1)
-        pred = torch.argmax(probs, dim=-1).item()
-        label = id2label.get(pred, str(pred))
+        preds = torch.argmax(probs, dim=-1).tolist()
+        labels = [id2label.get(p, str(p)).lower() for p in preds]
 
-    return label.lower()
-
+    return labels
 
 # === Keyword Judge ===
 def keyword_judge(response: str) -> bool:
@@ -197,21 +197,22 @@ def keyword_judge(response: str) -> bool:
 # === Main Script ===
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", type=str, required=False)
-    parser.add_argument("--use-judge-model", help="Experimental - Use a judge model for evaluation")
+    parser.add_argument("--model_name", type=str, required=True)
+    parser.add_argument("--use-judge-model", action="store_true", help="Use a judge model for evaluation")
     parser.add_argument("--judge_model", type=str, required=False, help="HF model ID for the judge model")
-    parser.add_argument("--max_examples", type=int, default=None, help="Number of examples to evaluate (default: all)")
-    parser.add_argument("--start", type=int, default=0, help="Start index for dataset slice")
-    parser.add_argument("--end", type=int, default=None, help="End index for dataset slice")
-    parser.add_argument("--multi_gpu", action="store_true", help="Enable multi-GPU loading if available")
-
+    parser.add_argument("--max_examples", type=int, default=None, help="Number of examples to evaluate")
+    parser.add_argument("--start", type=int, default=0)
+    parser.add_argument("--end", type=int, default=None)
+    parser.add_argument("--multi_gpu", action="store_true")
+    parser.add_argument("--batch_size", type=int, default=32, help="Batch size for generation")
 
     args = parser.parse_args()
 
-    if (args.use_judge_model and not args.judge_model) or (not args.use_judge_model and args.judge_model):
-        raise ValueError(
-            "Both --use-judge-model and --judge_model must be specified together or not at all."
-        )
+    if args.use_judge_model and not args.judge_model:
+        raise ValueError("--judge_model must be provided if --use-judge-model is used.")
+    if args.judge_model and not args.use_judge_model:
+        raise ValueError("Use --use-judge-model to enable judge model evaluation.")
+
     if args.use_judge_model:
         load_judge_model(args.judge_model)
 
@@ -219,55 +220,49 @@ def main():
 
     print("Loading AdvBench dataset...")
     dataset = load_dataset("walledai/advbench", split="train")
-
     end = args.end if args.end is not None else len(dataset)
-
     dataset = dataset.select(range(args.start, end))
+    if args.max_examples:
+        dataset = dataset.select(range(min(len(dataset), args.max_examples)))
 
-    print(f"Total examples available: {len(dataset)}")
-    print(f"Selecting from {args.start} to {end} (exclusive)")
+    prompts = dataset["prompt"]
+    results = []
 
+    with tqdm(total=len(prompts), desc="Evaluating") as pbar:
+        for batch_prompts in batched(prompts, args.batch_size):
+            model_outputs = generate_batch_responses(batch_prompts, tokenizer, model)
+
+            if args.use_judge_model:
+                verdicts = evaluate_batch_with_judge(model_outputs, batch_prompts)
+            else:
+                verdicts = ["safe" if keyword_judge(output) else "jailbroken" for output in model_outputs]
+
+            for p, o, v in zip(batch_prompts, model_outputs, verdicts):
+                results.append({
+                    "adv_prompt": p,
+                    "model_output": o,
+                    "verdict": v
+                })
+
+            pbar.update(len(batch_prompts))
+
+    # Write results
     with open("jailbreak_scan_results.txt", "w") as f:
         f.write(f"-- Jailbreak Scan Results for {args.model_name} --\n")
-
-    results = []
-    for example in tqdm(dataset):
-        adv_prompt = example["prompt"]
-        print("----------------------------------------------")
-        print("adv_prompt:", adv_prompt)
-        model_output = generate_response(adv_prompt, tokenizer, model, return_full_text=args.use_judge_model)
-        print(f"Response: {model_output}\n")
-
-        if args.use_judge_model:
-            print("Evaluating with judge model...")
-            verdict = evaluate_with_judge(model_output, adv_prompt)
-        else:
-            print("Using keyword judge...")
-            verdict = "safe" if keyword_judge(model_output) else "jailbroken"
-        print(f"\nVerdict: {verdict}\n")
-        print("----------------------------------------------")
-
-        with open("jailbreak_scan_results.txt", "a") as f:
-            f.write(f"Adv Prompt:{adv_prompt}\n")
-            f.write(f"Model Output:{model_output}\n")
-            f.write(f"Verdict:{verdict}\n")
+        for r in results:
+            f.write(f"Adv Prompt: {r['adv_prompt']}\n")
+            f.write(f"Model Output: {r['model_output']}\n")
+            f.write(f"Verdict: {r['verdict']}\n")
             f.write("----------------------------------------------\n")
 
-        results.append({
-            "adv_prompt": adv_prompt,
-            "model_output": model_output,
-            "verdict": verdict,
-        })
-
-    # Count verdicts dynamically
+    # Summary
     from collections import Counter
     summary = Counter([r["verdict"] for r in results])
 
     print("\n=== Evaluation Summary ===")
     total = len(results)
     for label, count in summary.items():
-        print(f"{label.capitalize()}: {count} ({count/total:.2%})")
-
+        print(f"{label.capitalize()}: {count} ({count / total:.2%})")
 
 if __name__ == "__main__":
     main()
