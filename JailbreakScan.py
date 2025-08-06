@@ -39,6 +39,7 @@ def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = Fal
     )
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+    tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
