@@ -29,26 +29,32 @@ def batched(iterable, batch_size):
 
 
 def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = False):
-    print(f"Loading model: {model_name} with {'4-bit' if load_in_4bit else '8-bit'} quantization")
-
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=load_in_4bit,
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16,
-    )
+    print(f"Loading model: {model_name}")
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-    # tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        quantization_config=bnb_config,
-        device_map="auto" if multi_gpu else None,
-        torch_dtype=torch.bfloat16,
-    )
+    # Special case for openai/gpt-oss (does not support quantization yet)
+    if "openai/gpt-oss" in model_name:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            device_map="auto" if multi_gpu else None,
+        )
+    else:
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=load_in_4bit,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
+
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            quantization_config=bnb_config,
+            device_map="auto" if multi_gpu else None,
+            torch_dtype=torch.bfloat16,
+        )
 
     return tokenizer, model
 
