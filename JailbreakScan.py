@@ -36,7 +36,7 @@ def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = Fal
         tokenizer.pad_token = tokenizer.eos_token
 
     # Special case for openai/gpt-oss (does not support quantization yet)
-    if "openai/gpt-oss" in model_name:
+    if "openai/gpt-oss" in model_name or "google/gemma-3n-E4B" in model_name:
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             device_map="auto" if multi_gpu else None,
