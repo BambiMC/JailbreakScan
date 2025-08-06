@@ -221,7 +221,11 @@ def main():
     dataset = load_dataset("walledai/advbench", split="train")
 
     end = args.end if args.end is not None else len(dataset)
+
     dataset = dataset.select(range(args.start, end))
+
+    print(f"Total examples available: {len(dataset)}")
+    print(f"Selecting from {args.start} to {end} (exclusive)")
 
     with open("jailbreak_scan_results.txt", "w") as f:
         f.write(f"-- Jailbreak Scan Results for {args.model_name} --\n")
