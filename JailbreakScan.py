@@ -10,8 +10,7 @@ from tqdm import tqdm
 import torch
 import torch.nn.functional as F
 
-from mistral_common.protocol.instruct.request import ChatCompletionRequest
-from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
+
 
 # === Utility Functions ===
 def auto_detect_chat_template(tokenizer):
@@ -36,13 +35,24 @@ def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = Fal
 
     if "mistral" in model_name.lower() and "3." in model_name:
         from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
-        from transformers import Mistral3ForConditionalGeneration
+        from transformers import Mistral3ForConditionalGeneration, BitsAndBytesConfig
 
         tokenizer = MistralTokenizer.from_hf_hub(model_name)
+
+        quantization_config = None
+        if load_in_4bit:
+            quantization_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.bfloat16,
+            )
+
         model = Mistral3ForConditionalGeneration.from_pretrained(
             model_name,
             torch_dtype=torch.bfloat16,
             device_map="auto" if multi_gpu else None,
+            quantization_config=quantization_config,
         )
 
         return tokenizer, model
