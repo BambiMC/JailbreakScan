@@ -39,10 +39,10 @@ def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = Fal
 
         tokenizer = MistralTokenizer.from_hf_hub(model_name)
 
-        quantization_config = None
+        bnb_config = None
         if load_in_4bit:
-            quantization_config = BitsAndBytesConfig(
-                load_in_4bit=True,
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=load_in_4bit,
                 bnb_4bit_use_double_quant=True,
                 bnb_4bit_quant_type="nf4",
                 bnb_4bit_compute_dtype=torch.bfloat16,
@@ -50,9 +50,9 @@ def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = Fal
 
         model = Mistral3ForConditionalGeneration.from_pretrained(
             model_name,
-            torch_dtype=torch.bfloat16,
+            quantization_config=bnb_config,
             device_map="auto" if multi_gpu else None,
-            quantization_config=quantization_config,
+            torch_dtype=torch.bfloat16,
         )
 
         return tokenizer, model
