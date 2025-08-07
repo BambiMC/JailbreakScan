@@ -10,6 +10,9 @@ from tqdm import tqdm
 import torch
 import torch.nn.functional as F
 
+from mistral_common.protocol.instruct.request import ChatCompletionRequest
+from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
+
 # === Utility Functions ===
 def auto_detect_chat_template(tokenizer):
     # Auto-detect if tokenizer uses chat templates (common in newer HuggingFace models)
@@ -31,12 +34,25 @@ def batched(iterable, batch_size):
 def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = False):
     print(f"Loading model: {model_name}")
 
+    if "mistral" in model_name.lower() and "3." in model_name:
+        from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
+        from transformers import Mistral3ForConditionalGeneration
+
+        tokenizer = MistralTokenizer.from_hf_hub(model_name)
+        model = Mistral3ForConditionalGeneration.from_pretrained(
+            model_name,
+            torch_dtype=torch.bfloat16,
+            device_map="auto" if multi_gpu else None,
+        )
+
+        return tokenizer, model
+
+    # Fallback to default for non-Mistral3 models
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
     tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    # Special case for openai/gpt-oss (does not support quantization yet)
     if "openai/gpt-oss" in model_name or "google/gemma-3n-E4B" in model_name:
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
@@ -49,7 +65,6 @@ def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = Fal
             bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.bfloat16,
         )
-
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             quantization_config=bnb_config,
@@ -62,6 +77,33 @@ def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = Fal
 
 # === Response Generation ===
 def generate_batch_responses(prompts, tokenizer, model, max_new_tokens=1024):
+    from mistral_common.protocol.instruct.request import ChatCompletionRequest
+
+    is_mistral3 = isinstance(model, torch.nn.Module) and model.__class__.__name__.startswith("Mistral3")
+
+    if is_mistral3:
+        responses = []
+        for prompt in prompts:
+            messages = [{"role": "user", "content": prompt}]
+            request = ChatCompletionRequest(messages=messages)
+            tokenized = tokenizer.encode_chat_completion(request)
+            input_ids = torch.tensor([tokenized.tokens]).to(model.device)
+            attention_mask = torch.ones_like(input_ids)
+
+            output = model.generate(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                max_new_tokens=max_new_tokens,
+                do_sample=True,
+                temperature=1.0,
+                top_p=0.95,
+            )[0]
+
+            decoded = tokenizer.decode(output[len(tokenized.tokens):])
+            responses.append(decoded)
+        return responses
+
+    # Fallback to legacy generation
     formatted_prompts = [format_prompt(p, tokenizer) for p in prompts]
     inputs = tokenizer(formatted_prompts, return_tensors="pt", padding=True, truncation=True).to(model.device)
 
