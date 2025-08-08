@@ -33,6 +33,7 @@ def batched(iterable, batch_size):
 def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = False):
     print(f"Loading model: {model_name}")
 
+    # === Special-case Mistral 3.x ===
     if "mistral" in model_name.lower() and "3." in model_name:
         from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
         from transformers import Mistral3ForConditionalGeneration, BitsAndBytesConfig
@@ -54,15 +55,25 @@ def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = Fal
             device_map="auto" if multi_gpu else None,
             torch_dtype=torch.bfloat16,
         )
-
         return tokenizer, model
 
-    # Fallback to default for non-Mistral3 models
+    # === Default tokenizer ===
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
     tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    # === Special-case Gemma3n to prevent multi-GPU mismatch ===
+    if "gemma3n" in model_name.lower():
+        print("⚠️ Detected gemma3n — forcing single GPU (cuda:0) to avoid cross-device tensor mismatch.")
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            device_map={"": 0},  # Everything on cuda:0
+            torch_dtype=torch.bfloat16,
+        )
+        return tokenizer, model
+
+    # === Other models ===
     if "openai/gpt-oss" in model_name or "google/gemma-3n-E4B" in model_name:
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
