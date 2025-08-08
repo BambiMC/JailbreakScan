@@ -98,7 +98,13 @@ def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = Fal
 
 
 # === Response Generation ===
-def generate_batch_responses(prompts, tokenizer, model, max_new_tokens=1024):
+def generate_batch_responses(prompts, tokenizer, model, max_new_tokens=512):
+
+    # More output allowed if model has thinking mode
+    thinking_models = ["openai/gpt-oss-20b", "zai-org/GLM-4-32B-0414", "openai/gpt-oss-120b", "Qwen/Qwen3-235B-A22B", "deepseek-ai/DeepSeek-R1-0528", "deepseek-ai/DeepSeek-V3-0324"]
+    if any(model in m for m in thinking_models):
+        max_new_tokens = 1024
+
     from mistral_common.protocol.instruct.request import ChatCompletionRequest
 
     is_mistral3 = isinstance(model, torch.nn.Module) and model.__class__.__name__.startswith("Mistral3")
