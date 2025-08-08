@@ -64,9 +64,9 @@ def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = Fal
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    # === Special-case Gemma3n to prevent multi-GPU mismatch ===
-    if "gemma3n" in model_name.lower():
-        print("⚠️ Detected gemma3n — forcing single GPU (cuda:0) to avoid cross-device tensor mismatch.")
+    # === Special-case Gemma-3n to prevent multi-GPU mismatch ===
+    if "gemma-3n" in model_name.lower():
+        print("⚠️ Detected gemma-3n — forcing single GPU (cuda:0) to avoid cross-device tensor mismatch.")
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             device_map={"": 0},  # Everything on cuda:0
