@@ -4,11 +4,13 @@ from transformers import (
     AutoModelForCausalLM,
     AutoModelForSequenceClassification,
     BitsAndBytesConfig,
+    Mistral3ForConditionalGeneration,
 )
 from datasets import load_dataset
 from tqdm import tqdm
 import torch
 import torch.nn.functional as F
+from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
 
 
 
@@ -35,8 +37,7 @@ def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = Fal
 
     # === Special-case Mistral 3.x ===
     if "mistral" in model_name.lower() and "3." in model_name:
-        from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
-        from transformers import Mistral3ForConditionalGeneration, BitsAndBytesConfig
+
 
         tokenizer = MistralTokenizer.from_hf_hub(model_name)
 
