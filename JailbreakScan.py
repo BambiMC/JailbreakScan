@@ -69,7 +69,7 @@ def load_model(model_name: str, load_in_4bit: bool = True, multi_gpu: bool = Fal
         print("⚠️ Detected gemma-3n — forcing single GPU (cuda:0) to avoid cross-device tensor mismatch.")
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            device_map={"": 0},  # Everything on cuda:0
+            device_map="auto",  # Everything on cuda:0
             torch_dtype=torch.bfloat16,
         )
         return tokenizer, model
