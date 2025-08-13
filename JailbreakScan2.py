@@ -25,10 +25,14 @@ from transformers import AutoProcessor, AutoModelForImageTextToText
 
 
 class BaseModel:
-    def __init__(self, model_name, *args, **kwargs):
+    def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
         self.model_name = model_name
-        self.tokenizer = None
+        self.load_in_4bit = load_in_4bit
+        self.multi_gpu = multi_gpu
+
         self.model = None
+        self.tokenizer = None
+
 
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
         raise NotImplementedError("Bitte in der Unterklasse implementieren.")
@@ -37,8 +41,8 @@ class BaseModel:
 
 
 # class Llama4(BaseModel):
-#     def __init__(self, model_name, *args, **kwargs):
-#         super().__init__(model_name, *args, **kwargs)
+#     def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
+#         super().__init__(self, model_name, load_in_4bit=False, multi_gpu=False)
 
 
 #     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
@@ -98,10 +102,10 @@ class BaseModel:
 #         return decoded
 
 class Llama4(BaseModel):
-    def __init__(self, model_name, *args, **kwargs):
-        super().__init__(model_name, *args, **kwargs)
+    def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
+        super().__init__(self, model_name, load_in_4bit=False, multi_gpu=False)
 
-    def load_model(self, model_name=None, load_in_4bit=False, multi_gpu=False):
+    def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
         print(f"Llama4 ({self.model_name}) wird geladen...")
 
         # Default to the official LLaMA-4 Scout model if not provided
@@ -156,11 +160,11 @@ class Llama4(BaseModel):
         return results
 
 class Gemma3n(BaseModel):
-    def __init__(self, model_name, *args, **kwargs):
-        super().__init__(model_name, *args, **kwargs)
+    def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
+        super().__init__(self, model_name, load_in_4bit=False, multi_gpu=False)
 
 
-    def load_model(self, model_name=None, load_in_4bit=False, multi_gpu=False):
+    def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
         print(f"Gemma3n ({self.model_name}) wird geladen...")
 
         self.tokenizer = AutoTokenizer.from_pretrained("google/gemma-3n-E4B-it", use_fast=True)
@@ -182,8 +186,8 @@ class Gemma3n(BaseModel):
 
 
 class Mistral3(BaseModel):
-    def __init__(self, model_name, *args, **kwargs):
-        super().__init__(model_name, *args, **kwargs)
+    def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
+        super().__init__(self, model_name, load_in_4bit=False, multi_gpu=False)
 
 
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
@@ -228,8 +232,8 @@ class Mistral3(BaseModel):
         return responses
 
 class OpenAI_OSS(BaseModel):
-    def __init__(self, model_name, *args, **kwargs):
-        super().__init__(model_name, *args, **kwargs)
+    def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
+        super().__init__(self, model_name, load_in_4bit=False, multi_gpu=False)
 
 
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
@@ -250,22 +254,22 @@ class OpenAI_OSS(BaseModel):
         return generate_batch_responses_generic(self, prompts, max_new_tokens)
 
 class FallbackModel(BaseModel):
-    def __init__(self, model_name, *args, **kwargs):
-        super().__init__(model_name, *args, **kwargs)
+    def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
+        super().__init__(self, model_name, load_in_4bit=False, multi_gpu=False)
 
 
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
         print(f"FallbackModel: unbekanntes Modell '{self.model_name}', Standardverhalten wird genutzt.")
 
-        if load_in_4bit:
-            bnb_config = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_use_double_quant=True,
-                bnb_4bit_quant_type="nf4",
-                bnb_4bit_compute_dtype=torch.float16,
-            )
-        else:
-            bnb_config = None
+        # if load_in_4bit:
+        #     bnb_config = BitsAndBytesConfig(
+        #         load_in_4bit=True,
+        #         bnb_4bit_use_double_quant=True,
+        #         bnb_4bit_quant_type="nf4",
+        #         bnb_4bit_compute_dtype=torch.float16,
+        #     )
+        # else:
+        bnb_config = None
 
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
         tokenizer.padding_side = "left"
@@ -316,7 +320,7 @@ class HF_Model:
     _patterns = [
         ("llama4", Llama4),
         ("gemma-3n", Gemma3n),
-        ("mistral", Mistral3),
+        ("mistral-large", Mistral3),
         ("openai/gpt-oss", OpenAI_OSS),
         # ("", ),
         # ("", ),
@@ -335,7 +339,11 @@ class HF_Model:
 
 
 
-
+def strip_input_from_output(outputs, inputs):
+    return [
+        output[len(input_ids):]
+        for output, input_ids in zip(outputs, inputs)
+    ]
 
 
 # === Main Script ===
@@ -381,15 +389,15 @@ def main():
     with tqdm(total=len(prompts), desc="Evaluating") as pbar:
         for batch_prompts in batched(prompts, args.batch_size):
             model_outputs = model.generate_batch_responses(batch_prompts, max_new_tokens)
-
+            answers = strip_input_from_output(model_outputs, batch_prompts)
             if args.use_judge_model:
                 verdicts = judge_model.evaluate_batch_with_judge(model_outputs, batch_prompts)
             else:
-                verdicts = ["safe" if keyword_judge(output) else "jailbroken" for output in model_outputs]
+                verdicts = ["safe" if keyword_judge(output) else "jailbroken" for output in answers]
                 print(f"Verdicts for batch: {verdicts}")
 
 
-            for p, o, v in zip(batch_prompts, model_outputs, verdicts):
+            for p, o, v in zip(batch_prompts, answers, verdicts):
                 results.append({
                     "adv_prompt": p,
                     "model_output": o,
