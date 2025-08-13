@@ -42,7 +42,7 @@ class BaseModel:
 
 # class Llama4(BaseModel):
 #     def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
-#         super().__init__(self, model_name, load_in_4bit=False, multi_gpu=False)
+#         super().__init__(model_name, load_in_4bit=False, multi_gpu=False)
 
 
 #     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
@@ -103,7 +103,7 @@ class BaseModel:
 
 class Llama4(BaseModel):
     def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
-        super().__init__(self, model_name, load_in_4bit=False, multi_gpu=False)
+        super().__init__(model_name, load_in_4bit=False, multi_gpu=False)
 
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
         print(f"Llama4 ({self.model_name}) wird geladen...")
@@ -161,7 +161,7 @@ class Llama4(BaseModel):
 
 class Gemma3n(BaseModel):
     def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
-        super().__init__(self, model_name, load_in_4bit=False, multi_gpu=False)
+        super().__init__(model_name, load_in_4bit=False, multi_gpu=False)
 
 
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
@@ -187,7 +187,7 @@ class Gemma3n(BaseModel):
 
 class Mistral3(BaseModel):
     def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
-        super().__init__(self, model_name, load_in_4bit=False, multi_gpu=False)
+        super().__init__(model_name, load_in_4bit=False, multi_gpu=False)
 
 
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
@@ -233,7 +233,7 @@ class Mistral3(BaseModel):
 
 class OpenAI_OSS(BaseModel):
     def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
-        super().__init__(self, model_name, load_in_4bit=False, multi_gpu=False)
+        super().__init__(model_name, load_in_4bit=False, multi_gpu=False)
 
 
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
@@ -255,7 +255,7 @@ class OpenAI_OSS(BaseModel):
 
 class FallbackModel(BaseModel):
     def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
-        super().__init__(self, model_name, load_in_4bit=False, multi_gpu=False)
+        super().__init__(model_name, load_in_4bit=False, multi_gpu=False)
 
 
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
