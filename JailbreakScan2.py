@@ -5,7 +5,7 @@ from transformers import (
     AutoModelForCausalLM,
     AutoModelForSequenceClassification,
     BitsAndBytesConfig,
-    # Llama4ForConditionalGeneration,
+    Llama4ForConditionalGeneration,
     Mistral3ForConditionalGeneration,
     AutoProcessor,
 )
