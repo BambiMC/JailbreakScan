@@ -175,7 +175,7 @@ class Gemma3n(BaseModel):
         print("⚠️ Detected gemma-3n — forcing single GPU (cuda:0) to avoid cross-device tensor mismatch.")
         self.model = AutoModelForCausalLM.from_pretrained(
             "google/gemma-3n-E4B-it",
-            device_map="auto",  # TODO Put everything on cuda:0
+            device_map="cuda:0",
             torch_dtype=torch.bfloat16,
             # quantization_config=bnb_config,
         )
@@ -191,6 +191,7 @@ class Mistral3(BaseModel):
 
 
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
+        print(f"Mistral3 ({self.model_name}) wird geladen...")
         tokenizer = MistralTokenizer.from_hf_hub(model_name)
         bnb_config = None
         if load_in_4bit:
@@ -237,14 +238,14 @@ class OpenAI_OSS(BaseModel):
 
 
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
-        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-        tokenizer.padding_side = "left"
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
+        print(f"OpenAI_OSS ({self.model_name}) wird geladen...")
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+        self.tokenizer.padding_side = "left"
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        
-
-        model = AutoModelForCausalLM.from_pretrained(
+        print("multi_gpu: ", multi_gpu)
+        self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             device_map="auto" if multi_gpu else None,
             torch_dtype=torch.bfloat16,
@@ -261,30 +262,27 @@ class FallbackModel(BaseModel):
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
         print(f"FallbackModel: unbekanntes Modell '{self.model_name}', Standardverhalten wird genutzt.")
 
-        # if load_in_4bit:
-        #     bnb_config = BitsAndBytesConfig(
-        #         load_in_4bit=True,
-        #         bnb_4bit_use_double_quant=True,
-        #         bnb_4bit_quant_type="nf4",
-        #         bnb_4bit_compute_dtype=torch.float16,
-        #     )
-        # else:
-        bnb_config = None
+        if load_in_4bit:
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.bfloat16,
+            )
+        else:
+            bnb_config = None
 
-        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-        tokenizer.padding_side = "left"
-        tokenizer.pad_token = tokenizer.eos_token
-        tokenizer.pad_token_id = tokenizer.eos_token_id
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+        self.tokenizer.padding_side = "left"
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
-        model = AutoModelForCausalLM.from_pretrained(
+        self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             quantization_config=bnb_config,
             device_map="auto" if multi_gpu else None,
             torch_dtype=torch.bfloat16,
         )
-
-        self.tokenizer = tokenizer
-        self.model = model
 
     def generate_batch_responses(self, prompts, max_new_tokens):
         return generate_batch_responses_generic(self, prompts, max_new_tokens)
@@ -334,7 +332,7 @@ class HF_Model:
         for pattern, model_class in cls._patterns:
             if pattern in model_name.lower():
                 return model_class(model_name, *args, **kwargs)
-        # No match → use fallback
+        # use fallback class
         return cls._fallback_class(model_name, *args, **kwargs)
 
 
@@ -343,15 +341,12 @@ def strip_input_from_output(outputs, inputs):
     stripped = []
     for output, prompt in zip(outputs, inputs):
         if output.startswith(prompt):
-            # Perfect match, slice after prompt
             stripped.append(output[len(prompt):])
         else:
-            # Try to find the prompt inside the output
             idx = output.find(prompt)
             if idx != -1:
                 stripped.append(output[idx + len(prompt):])
             else:
-                # If no prompt found, keep output unchanged
                 stripped.append(output)
     return stripped
 
