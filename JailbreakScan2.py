@@ -193,7 +193,7 @@ class Mistral3(BaseModel):
 
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
         print(f"Mistral3 ({self.model_name}) wird geladen...")
-        tokenizer = MistralTokenizer.from_hf_hub(model_name)
+        self.tokenizer = MistralTokenizer.from_hf_hub(model_name)
         bnb_config = None
         if load_in_4bit:
             bnb_config = BitsAndBytesConfig(
@@ -203,13 +203,12 @@ class Mistral3(BaseModel):
                 bnb_4bit_compute_dtype=torch.bfloat16,
         )
 
-        model = Mistral3ForConditionalGeneration.from_pretrained(
+        self.model = Mistral3ForConditionalGeneration.from_pretrained(
             model_name,
             device_map="auto" if multi_gpu else None,
             torch_dtype=torch.bfloat16,
             quantization_config=bnb_config,
         )
-        return tokenizer, model
 
     def generate_batch_responses(self, prompts, max_new_tokens):
         responses = []
@@ -310,7 +309,7 @@ def generate_batch_responses_generic(self, prompts, max_new_tokens):
         pad_token_id=self.tokenizer.pad_token_id,
         eos_token_id=self.tokenizer.eos_token_id,
     )
-    print(f"Generated output: {self.tokenizer.batch_decode(outputs, skip_special_tokens=True)}")
+    # print(f"Generated output: {self.tokenizer.batch_decode(outputs, skip_special_tokens=True)}")
     return self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
 
@@ -349,7 +348,7 @@ def strip_input_from_output(outputs, inputs):
                 stripped.append(output[idx + len(prompt):])
             else:
                 stripped.append(output)
-    return re.sub(r"<\|[^|]+?\|>", "", stripped)
+    return [re.sub(r"<\|[^|]+?\|>", "", s) for s in stripped]
 
 
 # === Main Script ===
