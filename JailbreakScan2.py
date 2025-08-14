@@ -181,7 +181,7 @@ def main():
     # if any(args.model_name.lower() in m.lower() for m in thinking_models):
     #     max_new_tokens = 1024
     # else:
-    max_new_tokens = 4
+    max_new_tokens = 16
 
     print("Loading AdvBench dataset...")
     dataset = load_dataset("walledai/advbench", split="train")
