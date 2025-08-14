@@ -1,4 +1,5 @@
 import argparse
+import re
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -348,7 +349,7 @@ def strip_input_from_output(outputs, inputs):
                 stripped.append(output[idx + len(prompt):])
             else:
                 stripped.append(output)
-    return stripped
+    return re.sub(r"<\|[^|]+?\|>", "", stripped)
 
 
 # === Main Script ===
