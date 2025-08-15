@@ -177,11 +177,13 @@ def main():
     model = HF_Model(args.model_name)
     model.load_model(args.model_name, load_in_4bit=True, multi_gpu=args.multi_gpu)
 
-    # thinking_models = ["openai/gpt-oss-20b", "zai-org/GLM-4-32B-0414", "openai/gpt-oss-120b", "Qwen/Qwen3-32B", "Qwen/Qwen3-235B-A22B", "deepseek-ai/DeepSeek-R1-0528", "deepseek-ai/DeepSeek-V3-0324"]
-    # if any(args.model_name.lower() in m.lower() for m in thinking_models):
-    #     max_new_tokens = 1024
-    # else:
-    max_new_tokens = 16
+    thinking_models = ["openai/gpt-oss", "zai-org/GLM-4-32B", "Qwen/Qwen3", "CohereLabs/c4ai-command-a"]
+    if any(args.model_name.lower() in m.lower() for m in thinking_models):
+        max_new_tokens = 2048
+    else:
+        max_new_tokens = 512
+
+
 
     print("Loading AdvBench dataset...")
     dataset = load_dataset("walledai/advbench", split="train")
