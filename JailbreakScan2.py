@@ -153,24 +153,22 @@ def strip_input_from_output(outputs, inputs):
     return replaced_tokens
 
 
+
 # === Main Script ===
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, required=True)
     parser.add_argument("--use-judge-model", action="store_true", help="Use a judge model for evaluation")
-    parser.add_argument("--judge_model", type=str, required=False, help="HF model ID for the judge model")
+    parser.add_argument("--judge_model", type=str, required=False, default="dphn/Dolphin-Llama3.1-8B-Instruct-6.0bpw-h6-exl2", help="HF model ID for the judge model")
     parser.add_argument("--max_examples", type=int, default=None, help="Number of examples to evaluate")
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--end", type=int, default=None)
     parser.add_argument("--multi_gpu", action="store_true")
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size for generation")
+    parser.add_argument("--rewriting_prompts", type=bool, default=False, help="Whether to rewrite prompts")
 
     args = parser.parse_args()
 
-    if args.use_judge_model and not args.judge_model:
-        raise ValueError("--judge_model must be provided if --use-judge-model is used.")
-    if args.judge_model and not args.use_judge_model:
-        raise ValueError("Use --use-judge-model to enable judge model evaluation.")
     if args.use_judge_model:
         judge_model.load_judge_model(args.judge_model)
 
@@ -194,6 +192,13 @@ def main():
 
     prompts = dataset["prompt"]
     results = []
+
+    if args.rewriting_prompts:
+        print("Loading Rewriter Model...")
+
+        prompts = rewriting_prompts(prompts, model.tokenizer, model.model, max_new_tokens)
+
+
 
     with tqdm(total=len(prompts), desc="Evaluating") as pbar:
         for batch_prompts in batched(prompts, args.batch_size):
