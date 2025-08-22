@@ -5,7 +5,7 @@ PromptGuard is a modular, production-ready benchmark designed to detect jailbrea
 ## Installation
 
 ```bash
-pip install transformers datasets openai accelerate bitsandbytes
+pip install transformers datasets openai accelerate bitsandbytes pillow timm mistral-common triton kernels
 ```
 
 ## Usage
