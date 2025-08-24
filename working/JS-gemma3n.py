@@ -20,7 +20,7 @@ from tqdm import tqdm
 import torch
 import torch.nn.functional as F
 from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
-import judge_model 
+import judge_model_classification as judge_model_classification 
 
 
 
