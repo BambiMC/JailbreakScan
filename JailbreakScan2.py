@@ -13,6 +13,7 @@ import judge_model_classification as judge_model
 import torch
 
 from utils import batched, format_prompt, keyword_judge
+import gc
 
 
 
@@ -125,10 +126,23 @@ class DefaultModel(BaseModel):
 
         print(f"Generated rewritten prompts: \n{decoded}")
         return decoded
+
+    def unload_model(self):
+        if self.model is not None:
+            del self.model
+            self.model = None
+        if self.tokenizer is not None:
+            del self.tokenizer
+            self.tokenizer = None
         
+        gc.collect()  # clean up CPU memory
+        
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
 
-
+        print("Model and tokenizer unloaded.")
 
 def generate_batch_responses_generic(self, prompts, max_new_tokens):
     if self.model is None or self.tokenizer is None:
@@ -234,6 +248,8 @@ def main():
         rewriter_model.load_model("dphn/Dolphin-Llama3.1-8B-Instruct-6.0bpw-h6-exl2", load_in_4bit=True, multi_gpu=args.multi_gpu)
         prompts = rewriter_model.rewrite_prompts(prompts, 256)
 
+        rewriter_model.unload_model()
+
 
     model = HF_Model(args.model_name)
     model.load_model(args.model_name, load_in_4bit=True, multi_gpu=args.multi_gpu)
@@ -249,6 +265,8 @@ def main():
                 all_model_outputs.append((p, o))  # store tuple of (prompt, output)
 
             pbar.update(len(batch_prompts))
+
+    rewriter_model.unload_model()
 
     if args.use_judge_model:
         judge_model.load_judge_model(args.judge_model)
