@@ -265,7 +265,7 @@ def main():
 
             pbar.update(len(batch_prompts))
 
-    rewriter_model.unload_model()
+    model.unload_model()
 
     if args.use_judge_model:
         judge_model.load_judge_model(args.judge_model)
