@@ -7,7 +7,8 @@ def format_prompt(prompt, tokenizer):
     # Applies appropriate formatting based on tokenizer type
     if auto_detect_chat_template(tokenizer):
         messages = [{"role": "user", "content": prompt}]
-        return tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True, return_tensors="pt")
+        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        # return tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True, return_tensors="pt")
     return prompt
 
 def batched(iterable, batch_size):
