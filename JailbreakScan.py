@@ -199,7 +199,7 @@ def generate_batch_responses_generic(self, prompts, max_new_tokens):
         pad_token_id=self.tokenizer.pad_token_id,
         eos_token_id=self.tokenizer.eos_token_id,
     )
-    print("generate_batch_responses_generic:\n" + self.tokenizer.batch_decode(outputs, skip_special_tokens=True))
+    print("generate_batch_responses_generic:\n" + str(self.tokenizer.batch_decode(outputs, skip_special_tokens=True)))
     return self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
 
