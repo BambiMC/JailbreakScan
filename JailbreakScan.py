@@ -180,11 +180,13 @@ def generate_batch_responses_generic(self, prompts, max_new_tokens, system_promp
 
     print(f"DefaultModel ({self.model_name}) generiert Antworten...")
 
+    print("DEBUG START")
+    print(f"Prompts: {str(prompts)}")
+    print(f"System Prompt: {system_prompt}")
+    print("DEBUG END")
+
     # Fallback to legacy generation
-    if system_prompt:
-        formatted_prompts = [format_prompt(p, self.tokenizer, system_prompt=system_prompt) for p in prompts]
-    else:
-        formatted_prompts = [format_prompt(p, self.tokenizer) for p in prompts]
+    formatted_prompts = [format_prompt(p, self.tokenizer, system_prompt=system_prompt) for p in prompts]
 
     inputs = self.tokenizer(formatted_prompts, return_tensors="pt", padding=True, truncation=True).to(self.model.device)
 
