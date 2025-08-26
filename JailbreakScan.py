@@ -175,7 +175,6 @@ class DefaultModel(BaseModel):
             torch.cuda.empty_cache()
             torch.cuda.ipc_collect()
 
-
         print("Model and tokenizer unloaded.")
 
 def generate_batch_responses_generic(self, prompts, max_new_tokens):
@@ -276,13 +275,19 @@ def main():
     prompts = dataset["prompt"]
     results = []
     all_model_outputs = []
-    rewriter_model = None
 
     print(" --- Starting rewriting prompts pass --- ")
     if args.rewrite_prompts:
         rewriter_model = HF_Model("dphn/Dolphin-Llama3.1-8B-Instruct-6.0bpw-h6-exl2")
         rewriter_model.load_model("dphn/Dolphin-Llama3.1-8B-Instruct-6.0bpw-h6-exl2", load_in_4bit=True, multi_gpu=args.multi_gpu)
         prompts = rewriter_model.rewrite_prompts(prompts, 512)
+        #TODO Wenn "" im output dann nur das dazwischen nehmen -> Funktioniert das?
+        prompts = [p.split('"')[1] if '"' in p else p for p in prompts]
+        print("Rewritten prompts:")
+        for i, prompt in enumerate(prompts):
+            print(f"REWRITTEN PROMPT {i}:\n{prompt}")
+            print("END OF REWRITTEN PROMPT")
+        print("End of rewritten prompts.")
 
         rewriter_model.unload_model()
 
