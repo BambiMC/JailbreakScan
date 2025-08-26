@@ -97,6 +97,8 @@ class DefaultModel(BaseModel):
         """
         Rewrites user prompts in a safe way (e.g., paraphrasing, normalizing, or reformatting).
         """
+        print(f"Rewriting prompts with {self.model_name}...")
+        print(f"Number of prompts to rewrite: {len(prompts)}")
 
         if self.model is None or self.tokenizer is None:
             raise RuntimeError("Model not loaded. Call load_model() first.")
@@ -149,6 +151,14 @@ class DefaultModel(BaseModel):
 
         # Decode into readable strings
         decoded = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
+
+        print(f"Rewritten prompts with {self.model_name} completed.")
+        print("Decoded outputs:")
+        for i, (prompt, output) in enumerate(zip(prompts, decoded)):
+            print(f"Prompt {i}: {prompt}")
+            print(f"Output {i}: {output}")
+        print("End of decoded outputs.")
+
         return decoded
 
     def unload_model(self):
@@ -189,6 +199,7 @@ def generate_batch_responses_generic(self, prompts, max_new_tokens):
         pad_token_id=self.tokenizer.pad_token_id,
         eos_token_id=self.tokenizer.eos_token_id,
     )
+    print("generate_batch_responses_generic:\n" + self.tokenizer.batch_decode(outputs, skip_special_tokens=True))
     return self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
 
