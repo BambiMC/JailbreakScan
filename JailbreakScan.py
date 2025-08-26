@@ -267,10 +267,11 @@ def main():
     all_model_outputs = []
     rewriter_model = None
 
+    print(" --- Starting rewriting prompts pass --- ")
     if args.rewrite_prompts:
         rewriter_model = HF_Model("dphn/Dolphin-Llama3.1-8B-Instruct-6.0bpw-h6-exl2")
         rewriter_model.load_model("dphn/Dolphin-Llama3.1-8B-Instruct-6.0bpw-h6-exl2", load_in_4bit=True, multi_gpu=args.multi_gpu)
-        prompts = rewriter_model.rewrite_prompts(prompts, 256)
+        prompts = rewriter_model.rewrite_prompts(prompts, 512)
 
         rewriter_model.unload_model()
 
@@ -279,7 +280,7 @@ def main():
     model.load_model(args.model_name, load_in_4bit=True, multi_gpu=args.multi_gpu)
 
 
-    # First pass: generate and outputs
+    print(" --- Starting generation pass --- ")
     with tqdm(total=len(prompts), desc="Generating") as pbar:
         for batch_prompts in batched(prompts, args.batch_size):
             model_outputs = model.generate_batch_responses(batch_prompts, max_new_tokens)
@@ -295,7 +296,7 @@ def main():
     if args.use_judge_model:
         judge_model.load_judge_model(args.judge_model)
 
-    # Second pass: evaluate
+    print(" --- Starting evaluation pass --- ")
     with tqdm(total=len(all_model_outputs), desc="Evaluating") as pbar:
         for batch in batched(all_model_outputs, args.batch_size):
             batch_prompts, batch_outputs = zip(*batch)
@@ -316,6 +317,7 @@ def main():
             pbar.update(len(batch))
 
     # Write results
+    print(" --- Starting writing results --- ")
     with open("jailbreak_scan_results.txt", "w") as f:
         f.write(f"-- Jailbreak Scan Results for {args.model_name} --\n")
         for r in results:
