@@ -115,56 +115,56 @@ class DefaultModel(BaseModel):
             # "Rewrite the following prompt: "
         )
 
-        # Integrated formatter for each prompt
-        def format_prompt2(prompt, tokenizer):
-            if hasattr(tokenizer, "apply_chat_template"):
+        # # Integrated formatter for each prompt
+        # def format_prompt2(prompt, tokenizer):
+        #     if hasattr(tokenizer, "apply_chat_template"):
 
-                messages = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Rewrite the following prompt: {prompt}"}
-                ]
-                return tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True
-                )
-            # Fallback if no chat template
-            return f"{system_prompt}\n\nPrompt: {prompt}"
+        #         messages = [
+        #             {"role": "system", "content": system_prompt},
+        #             {"role": "user", "content": f"Rewrite the following prompt: {prompt}"}
+        #         ]
+        #         return tokenizer.apply_chat_template(
+        #             messages,
+        #             tokenize=False,
+        #             add_generation_prompt=True
+        #         )
+        #     # Fallback if no chat template
+        #     return f"{system_prompt}\n\nPrompt: {prompt}"
 
-        # Format each prompt before passing to the model
-        formatted_prompts = [format_prompt2(p, self.tokenizer) for p in prompts]
+        # # Format each prompt before passing to the model
+        # formatted_prompts = [format_prompt2(p, self.tokenizer) for p in prompts]
 
-        # Tokenize batched input
-        inputs = self.tokenizer(
-            formatted_prompts,
-            return_tensors="pt",
-            padding=True,
-            truncation=True
-        ).to(self.model.device)
+        # # Tokenize batched input
+        # inputs = self.tokenizer(
+        #     formatted_prompts,
+        #     return_tensors="pt",
+        #     padding=True,
+        #     truncation=True
+        # ).to(self.model.device)
 
-        # Generate model outputs
-        outputs = self.model.generate(
-            input_ids=inputs["input_ids"],
-            attention_mask=inputs["attention_mask"],
-            max_new_tokens=max_new_tokens,
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.9,
-            pad_token_id=self.tokenizer.pad_token_id,
-            eos_token_id=self.tokenizer.eos_token_id,
-        )
+        # # Generate model outputs
+        # outputs = self.model.generate(
+        #     input_ids=inputs["input_ids"],
+        #     attention_mask=inputs["attention_mask"],
+        #     max_new_tokens=max_new_tokens,
+        #     do_sample=True,
+        #     temperature=0.7,
+        #     top_p=0.9,
+        #     pad_token_id=self.tokenizer.pad_token_id,
+        #     eos_token_id=self.tokenizer.eos_token_id,
+        # )
 
-        # Decode into readable strings
-        decoded = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
+        # # Decode into readable strings
+        # decoded = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
-        print(f"Rewritten prompts with {self.model_name} completed.")
-        print("Decoded outputs:")
-        for i, (prompt, output) in enumerate(zip(prompts, decoded)):
-            print(f"Prompt {i}: {prompt}")
-            print(f"Output {i}: {output}")
-        print("End of decoded outputs.")
+        # print(f"Rewritten prompts with {self.model_name} completed.")
+        # print("Decoded outputs:")
+        # for i, (prompt, output) in enumerate(zip(prompts, decoded)):
+        #     print(f"Prompt {i}: {prompt}")
+        #     print(f"Output {i}: {output}")
+        # print("End of decoded outputs.")
 
-        return decoded
+        # return decoded
 
     def unload_model(self):
         if self.model is not None:
@@ -290,6 +290,7 @@ def main():
 
     print(" --- Starting rewriting prompts pass --- ")
     if args.rewrite_prompts:
+        print("Rewriting prompts enabled")
         rewriter_model = HF_Model("dphn/Dolphin-Llama3.1-8B-Instruct-6.0bpw-h6-exl2")
         rewriter_model.load_model("dphn/Dolphin-Llama3.1-8B-Instruct-6.0bpw-h6-exl2", load_in_4bit=True, multi_gpu=args.multi_gpu)
         print("\n\n\nREWRITER LOADED\n\n\n")
