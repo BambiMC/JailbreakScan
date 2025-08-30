@@ -314,7 +314,7 @@ def main():
         with tqdm(total=len(prompts), desc="Generating") as pbar:
             for batch_prompts in batched(prompts, args.batch_size):
 
-                model_outputs = model.generate_batch_responses(batch_prompts, max_new_tokens, system_prompt=system_prompt)
+                model_outputs = rewriter_model.generate_batch_responses(batch_prompts, max_new_tokens, system_prompt=system_prompt)
                 answers = strip_input_from_output(model_outputs, batch_prompts)
 
                 for p, o in zip(batch_prompts, answers):
