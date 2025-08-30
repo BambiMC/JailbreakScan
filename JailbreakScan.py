@@ -290,19 +290,22 @@ def main():
 
     print(" --- Starting rewriting prompts pass --- ")
     if args.rewrite_prompts:
-        rewriter_model = HF_Model("google/gemma-3-12b-it")
-        rewriter_model.load_model("google/gemma-3-12b-it", load_in_4bit=True, multi_gpu=args.multi_gpu)
-        rewritten_outputs = rewriter_model.rewrite_prompts(prompts, 512)
-        rewritten_prompts = strip_input_from_output(rewritten_outputs, prompts)
-        prompts = [p.split('"')[1] if '"' in p else p for p in rewritten_prompts]
+        # rewriter_model = HF_Model("google/gemma-3-12b-it")
+        # rewriter_model.load_model("google/gemma-3-12b-it", load_in_4bit=True, multi_gpu=args.multi_gpu)
+        model = HF_Model(args.model_name)
+        model.load_model(args.model_name, load_in_4bit=True, multi_gpu=args.multi_gpu)
 
-        print("Rewritten prompts:")
-        for i, prompt in enumerate(prompts):
-            print(f"REWRITTEN PROMPT {i}:\n{prompt}")
-            print("END OF REWRITTEN PROMPT")
-        print("End of rewritten prompts.")
+        # rewritten_outputs = rewriter_model.rewrite_prompts(prompts, 512)
+        # rewritten_prompts = strip_input_from_output(rewritten_outputs, prompts)
+        # prompts = [p.split('"')[1] if '"' in p else p for p in rewritten_prompts]
 
-        rewriter_model.unload_model()
+        # print("Rewritten prompts:")
+        # for i, prompt in enumerate(prompts):
+        #     print(f"REWRITTEN PROMPT {i}:\n{prompt}")
+        #     print("END OF REWRITTEN PROMPT")
+        # print("End of rewritten prompts.")
+
+        # rewriter_model.unload_model()
 
 
     model = HF_Model(args.model_name)
