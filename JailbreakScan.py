@@ -58,11 +58,11 @@ class OpenAI_OSS(BaseModel):
 
 class DefaultModel(BaseModel):
     def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
-        super().__init__(model_name, load_in_4bit=False, multi_gpu=False)
+        super().__init__(model_name, load_in_4bit=load_in_4bit, multi_gpu=multi_gpu)
 
 
     def load_model(self, model_name, load_in_4bit=False, multi_gpu=False):
-        print(f"DefaultModel: '{self.model_name}', Standardverhalten wird genutzt.")
+        print(f"DefaultModel: '{self.model_name}', Standardverhalten wird genutzt. Lädt Modell mit 4bit: {load_in_4bit}")
 
         if load_in_4bit:
             bnb_config = BitsAndBytesConfig(
@@ -75,6 +75,7 @@ class DefaultModel(BaseModel):
             bnb_config = None
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+        print("Tokenizer geladen.")
         self.tokenizer.padding_side = "left"
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
@@ -85,6 +86,7 @@ class DefaultModel(BaseModel):
             device_map="auto" if multi_gpu else None,
             torch_dtype=torch.bfloat16,
         )
+        print("Modell geladen.")
 
     def generate_batch_responses(self, prompts, max_new_tokens, system_prompt=""):
         return generate_batch_responses_generic(self, prompts, max_new_tokens, system_prompt)
