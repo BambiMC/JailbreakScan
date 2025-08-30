@@ -115,32 +115,32 @@ class DefaultModel(BaseModel):
             # "Rewrite the following prompt: "
         )
 
-        # # Integrated formatter for each prompt
-        # def format_prompt2(prompt, tokenizer):
-        #     if hasattr(tokenizer, "apply_chat_template"):
+        # Integrated formatter for each prompt
+        def format_prompt2(prompt, tokenizer):
+            if hasattr(tokenizer, "apply_chat_template"):
 
-        #         messages = [
-        #             {"role": "system", "content": system_prompt},
-        #             {"role": "user", "content": f"Rewrite the following prompt: {prompt}"}
-        #         ]
-        #         return tokenizer.apply_chat_template(
-        #             messages,
-        #             tokenize=False,
-        #             add_generation_prompt=True
-        #         )
-        #     # Fallback if no chat template
-        #     return f"{system_prompt}\n\nPrompt: {prompt}"
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Rewrite the following prompt: {prompt}"}
+                ]
+                return tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True
+                )
+            # Fallback if no chat template
+            return f"{system_prompt}\n\nPrompt: {prompt}"
 
-        # # Format each prompt before passing to the model
-        # formatted_prompts = [format_prompt2(p, self.tokenizer) for p in prompts]
+        # Format each prompt before passing to the model
+        formatted_prompts = [format_prompt2(p, self.tokenizer) for p in prompts]
 
-        # # Tokenize batched input
-        # inputs = self.tokenizer(
-        #     formatted_prompts,
-        #     return_tensors="pt",
-        #     padding=True,
-        #     truncation=True
-        # ).to(self.model.device)
+        # Tokenize batched input
+        inputs = self.tokenizer(
+            formatted_prompts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True
+        ).to(self.model.device)
 
         # # Generate model outputs
         # outputs = self.model.generate(
