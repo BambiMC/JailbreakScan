@@ -142,17 +142,17 @@ class DefaultModel(BaseModel):
             truncation=True
         ).to(self.model.device)
 
-        # # Generate model outputs
-        # outputs = self.model.generate(
-        #     input_ids=inputs["input_ids"],
-        #     attention_mask=inputs["attention_mask"],
-        #     max_new_tokens=max_new_tokens,
-        #     do_sample=True,
-        #     temperature=0.7,
-        #     top_p=0.9,
-        #     pad_token_id=self.tokenizer.pad_token_id,
-        #     eos_token_id=self.tokenizer.eos_token_id,
-        # )
+        # Generate model outputs
+        outputs = self.model.generate(
+            input_ids=inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
+            max_new_tokens=max_new_tokens,
+            do_sample=True,
+            temperature=0.7,
+            top_p=0.9,
+            pad_token_id=self.tokenizer.pad_token_id,
+            eos_token_id=self.tokenizer.eos_token_id,
+        )
 
         # # Decode into readable strings
         # decoded = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
