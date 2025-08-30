@@ -92,7 +92,7 @@ class DefaultModel(BaseModel):
         return generate_batch_responses_generic(self, prompts, max_new_tokens, system_prompt)
 
 
-    def rewrite_prompts(self, prompts, max_new_tokens=128):
+    def rewrite_prompts(self, prompts, max_new_tokens=128, batch_size=16):
         """
         Rewrites user prompts in a safe way (e.g., paraphrasing, normalizing, or reformatting).
         """
@@ -127,7 +127,7 @@ class DefaultModel(BaseModel):
         all_decoded = []
 
         # Process in batches
-        for batch_prompts in batched(prompts, 16):
+        for batch_prompts in batched(prompts, batch_size):
             # Format each prompt before passing to the model
             formatted_prompts = [format_prompt2(p, self.tokenizer) for p in batch_prompts]
 
@@ -296,7 +296,7 @@ def main():
         rewriter_model = HF_Model("dphn/Dolphin-Llama3.1-8B-Instruct-6.0bpw-h6-exl2")
         rewriter_model.load_model("dphn/Dolphin-Llama3.1-8B-Instruct-6.0bpw-h6-exl2", load_in_4bit=True, multi_gpu=args.multi_gpu)
         print("\n\n\nREWRITER LOADED\n\n\n")
-        rewritten_outputs = rewriter_model.rewrite_prompts(prompts, 512)
+        rewritten_outputs = rewriter_model.rewrite_prompts(prompts, 512, args.batch_size)
         rewritten_prompts = strip_input_from_output(rewritten_outputs, prompts)
         prompts = [p.split('"')[1] if '"' in p else p for p in rewritten_prompts]
 
