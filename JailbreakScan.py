@@ -55,6 +55,22 @@ class OpenAI_OSS(BaseModel):
 
     def generate_batch_responses(self, prompts, max_new_tokens, system_prompt=""):
         return generate_batch_responses_generic(self, prompts, max_new_tokens, system_prompt)
+    
+    def unload_model(self):
+        if self.model is not None:
+            del self.model
+            self.model = None
+        if self.tokenizer is not None:
+            del self.tokenizer
+            self.tokenizer = None
+        
+        gc.collect()  # clean up CPU memory
+        
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+
+        print("Model and tokenizer unloaded.")
 
 class DefaultModel(BaseModel):
     def __init__(self, model_name, load_in_4bit=False, multi_gpu=False):
